@@ -1,0 +1,19 @@
+# Build stage
+BootStrap: docker
+From: nvcr.io/nvidia/nvhpc:20.7-devel-centos7
+Stage: build
+
+%files
+    ./fortran/ /source
+
+%post
+    cd /source
+    nvfortran -g -fast ksaxpy.cuf -o ksaxpy
+    chmod +x ksaxpy
+
+# Runtime stage
+BootStrap: docker
+From: nvcr.io/nvidia/nvhpc:20.7-runtime-cuda10.2-centos7
+
+%environment
+    export PATH=$PATH:/source

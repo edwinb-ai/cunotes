@@ -1,0 +1,61 @@
+program curand_example
+    use cudafor
+    use curand
+    implicit none
+    real, allocatable :: hostData(:)
+    real, allocatable, device :: deviceData(:)
+    real :: pival
+    integer :: N, seed, istat, inside_gpu, i, twoN
+    integer :: inside_cpu
+    type(curandGenerator) :: gen
+
+    N = 10000000
+    twoN = N*N
+
+    allocate( hostData(twoN) )
+    allocate( deviceData(twoN) )
+
+    istat = curandCreateGenerator( gen, CURAND_RNG_PSEUDO_DEFAULT )
+    print*, istat
+
+    seed = 312343412
+    istat = curandSetPseudoRandomGeneratorSeed( gen,seed )
+    print*, istat
+    istat = curandGenerateSeeds( gen )
+    print*, istat
+
+    istat = curandGenerateUniform( gen,deviceData,twoN )
+    print*, istat
+
+    hostData = deviceData
+
+    inside_gpu = 0
+    !$cuf kernel do <<<*,*>>>
+    do i = 1,N
+        if ( (deviceData(i)**2 + deviceData(i+N)**2) <= 1.0 ) then
+            inside_gpu = inside_gpu + 1
+        end if
+    end do
+
+    inside_cpu = 0
+    do i = 1,N
+        if ( (hostData(i)**2 + hostData(i+N)**2) <= 1.0 ) then
+            inside_cpu = inside_cpu + 1
+        end if
+    end do
+
+    if (inside_cpu .ne. inside_gpu) then
+        write(*,*) "Mismatch between CPU/GPU"
+    end if
+
+    pival = 4.0*real(inside_gpu)/real(N)
+    write(*,"(t3,a,i10,a,f10.8,a,e11.4)") "Samples=", N, &
+    "  Pi=", pival, &
+    "  Error=", abs(pival -2.0*asin(1.0))
+
+    deallocate( hostData )
+    deallocate( deviceData )
+
+    istat = curandDestroyGenerator( gen )
+    print*, istat
+end program curand_example
