@@ -1,0 +1,21 @@
+module add_dev
+    use cudafor
+    implicit none
+    private
+    public add_dv
+
+    contains
+
+    attributes(global) subroutine add_dv(a,b,c)
+    ! Este kernel suma dos vectores a y b, y regresa el resultado
+    ! en el arreglo c
+        integer, intent(in), device :: a(:), b(:)
+        integer, intent(inout), device :: c(:)
+        integer :: tid, n
+
+        n = size(a)
+        tid = blockIdx%x
+
+        if ( tid <= n ) c(tid) = a(tid) + b(tid)
+    end subroutine add_dv
+end module add_dev

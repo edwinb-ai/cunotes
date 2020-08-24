@@ -1,0 +1,45 @@
+program add
+    use add_dev, only: add_dv
+    implicit none
+
+    integer, parameter :: n = 5000
+    integer :: i
+    integer, allocatable, device :: dev_a(:), dev_b(:), dev_c(:)
+    integer, allocatable :: a(:), b(:), c(:)
+
+    ! Se asigna la memoria a los arreglos
+    allocate( dev_a(n),dev_b(n),dev_c(n) )
+    allocate( a(n),b(n),c(n) )
+
+    ! Se inicializan los arreglos con algunos valores
+    do i = 1, n
+        a(i) = -i
+        b(i) = i*i
+    end do
+
+    ! Se copian implícitamente al GPU
+    dev_a = a
+    dev_b = b
+
+    ! Se llama el kernel que fue compilado en un módulo
+    ! por separado
+    ! Aquí se llaman N bloques y 1 hilo por bloque, lo que se está haciendo
+    ! es copiar el kernel add_dv N veces, cada uno con un índice diferente
+    ! dentro de la malla, cada hilo va a realizar la operación y así es como
+    ! se genera la paralelización masiva de esta suma.
+    ! Esto es simple, pero tiene la restricción de que el número de bloques
+    ! por GPU es limitado (65,535 bloques en total).
+    call add_dv<<<N,1>>>( dev_a, dev_b, dev_c )
+
+    ! Se comprueba que el resultado es correcto
+    c = dev_c
+    do i = 1, n
+        if ( (a(i)+b(i)) .ne. c(i) ) then
+            write(*,*) "Sum is different"
+        end if
+    end do
+
+    ! Se limpia la memoria
+    deallocate( dev_a,dev_b,dev_c )
+    deallocate( a,b,c )
+end program
