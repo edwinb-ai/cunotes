@@ -22,7 +22,7 @@ program curand_example
     print*, istat
 
     ! Asignarle una semilla al RNG
-    seed = 312343412
+    seed = 312343416
     istat = curandSetPseudoRandomGeneratorSeed( gen,seed )
     print*, istat
 
