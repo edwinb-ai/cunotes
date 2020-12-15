@@ -1,8 +1,29 @@
+module add_dev
+    use cudafor
+    implicit none
+    private
+    public add_dv
+
+    attributes(global) subroutine add_dv(a,b,c)
+    ! Este kernel suma dos vectores a y b, y regresa el resultado
+    ! en el arreglo c
+        integer, intent(in), device :: a(:), b(:)
+        integer, intent(inout), device :: c(:)
+        integer :: tid, n
+
+        n = size(a)
+        tid = blockIdx%x
+
+        if ( tid <= n ) c(tid) = a(tid) + b(tid)
+    end subroutine add_dv
+end module add_dev
+
 program add
     use add_dev, only: add_dv
+    use iso_fortran_env, only: output_unit
     implicit none
 
-    integer, parameter :: n = 5000
+    integer, parameter :: n = 50000
     integer :: i
     integer, allocatable, device :: dev_a(:), dev_b(:), dev_c(:)
     integer, allocatable :: a(:), b(:), c(:)
@@ -27,15 +48,17 @@ program add
     ! es copiar el kernel add_dv N veces, cada uno con un índice diferente
     ! dentro de la malla, cada hilo va a realizar la operación y así es como
     ! se genera la paralelización masiva de esta suma.
-    ! Esto es simple, pero tiene la restricción de que el número de bloques
-    ! por GPU es limitado (65,535 bloques en total).
+    ! Esto es simple, efectivo, y tiene un límite superior muy alto, pues
+    ! se tienen 2 ^ 31 - 1 bloques en la dimensión x
     call add_dv<<<N,1>>>( dev_a, dev_b, dev_c )
 
     ! Se comprueba que el resultado es correcto
     c = dev_c
     do i = 1, n
-        if ( (a(i)+b(i)) .ne. c(i) ) then
-            write(*,*) "Sum is different"
+        if ( ( a(i) + b(i) ) .ne. c(i) ) then
+            write(unit=output_unit, fmt='(a)') "Suma es diferente!"
+        else
+            write(unit=output_unit, fmt='(a)') "Suma correcta"
         end if
     end do
 

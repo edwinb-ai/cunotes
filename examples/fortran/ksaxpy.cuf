@@ -1,34 +1,47 @@
 module mathOps
 
-contains
+    implicit none
+    public saxpy
 
-attributes(global) subroutine saxpy(x, y, a)
-implicit none
-real :: x(:), y(:)
-real, value :: a
-integer :: i, n
-n = size(x)
-i = blockDim%x * (blockIdx%x - 1) + threadIdx%x
-if (i <= n) y(i) = y(i) + a*x(i)
-end subroutine saxpy 
+    attributes(global) subroutine saxpy(x, y, a)
+        real :: x(:), y(:)
+        real, value :: a
+        integer :: i, n
+        n = size(x)
+        i = blockDim%x * (blockIdx%x - 1) + threadIdx%x
+        if (i <= n) y(i) = y(i) + a*x(i)
+
+    end subroutine saxpy
+
 end module mathOps
-    
+
 program testSaxpy
-use mathOps
-use cudafor
-implicit none
-integer, parameter :: N = 40000
-real :: x(N), y(N), a
-real, device :: x_d(N), y_d(N)
-type(dim3) :: grid, tBlock
+    use mathOps
+    use cudafor
+    use iso_fortran_env, only: output_unit
+    implicit none
+    integer, parameter :: n = 40000
+    real, allocatable :: x(:), y(:)
+    real :: a
+    real, allocatable, device :: x_d(:), y_d(:)
+    type(dim3) :: grid, tBlock
 
-tBlock = dim3(256,1,1)
-grid = dim3(ceiling(real(N)/tBlock%x),1,1)
+    ! Asignamos un número total de bloques y de hilos por bloque
+    tBlock = dim3(256, 1, 1)
+    grid = dim3(ceiling(real(N)/tBlock%x), 1, 1)
 
-x = 1.0; y = 2.0; a = 2.0
-x_d = x
-y_d = y
-call saxpy<<<grid, tBlock>>>(x_d, y_d, a)
-y = y_d
-write(*,*) 'Max error: ', maxval(abs(y-4.0))
+    ! Inicializamos los arreglos
+    allocate( x(n), y(n), x_d(n), y_d(n) )
+    x = 1.0
+    y = 2.0
+    a = 2.0
+    x_d = x
+    y_d = y
+    call saxpy<<< grid, tBlock >>>(x_d, y_d, a)
+    y = y_d
+
+    ! Mostramos el resultado final
+    write (unit=output_unit, fmt='(a,f16.8)') 'Max error: ', maxval(abs(y - 4.0))
+
+    deallocate( x,y,x_d,y_d )
 end program testSaxpy

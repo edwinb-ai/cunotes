@@ -1,5 +1,6 @@
 # Objetos y archivos de Fortran
 *.mod
 *.o
+*.out
 # Imágenes de Singularity (son muy pesadas)
 *.sif
