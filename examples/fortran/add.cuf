@@ -1,25 +1,5 @@
-module add_dev
-    use cudafor
-    implicit none
-    private
-    public add_dv
-
-    attributes(global) subroutine add_dv(a,b,c)
-    ! Este kernel suma dos vectores a y b, y regresa el resultado
-    ! en el arreglo c
-        integer, intent(in), device :: a(:), b(:)
-        integer, intent(inout), device :: c(:)
-        integer :: tid, n
-
-        n = size(a)
-        tid = blockIdx%x
-
-        if ( tid <= n ) c(tid) = a(tid) + b(tid)
-    end subroutine add_dv
-end module add_dev
-
 program add
-    use add_dev, only: add_dv
+    use kernels, only: add_dev
     use iso_fortran_env, only: output_unit
     implicit none
 
@@ -50,7 +30,7 @@ program add
     ! se genera la paralelización masiva de esta suma.
     ! Esto es simple, efectivo, y tiene un límite superior muy alto, pues
     ! se tienen 2 ^ 31 - 1 bloques en la dimensión x
-    call add_dv<<<N,1>>>( dev_a, dev_b, dev_c )
+    call add_dev<<<N,1>>>( dev_a, dev_b, dev_c )
 
     ! Se comprueba que el resultado es correcto
     c = dev_c

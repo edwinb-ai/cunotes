@@ -1,34 +1,18 @@
-module mathOps
-
-    implicit none
-    public saxpy
-
-    attributes(global) subroutine saxpy(x, y, a)
-        real :: x(:), y(:)
-        real, value :: a
-        integer :: i, n
-        n = size(x)
-        i = blockDim%x * (blockIdx%x - 1) + threadIdx%x
-        if (i <= n) y(i) = y(i) + a*x(i)
-
-    end subroutine saxpy
-
-end module mathOps
-
 program testSaxpy
-    use mathOps
+    use kernels, only: saxpy
     use cudafor
     use iso_fortran_env, only: output_unit
     implicit none
-    integer, parameter :: n = 40000
+
+    integer, parameter :: n = 2 ** 25 ! 33_554_432 de elementos !!!
     real, allocatable :: x(:), y(:)
     real :: a
     real, allocatable, device :: x_d(:), y_d(:)
     type(dim3) :: grid, tBlock
 
     ! Asignamos un número total de bloques y de hilos por bloque
-    tBlock = dim3(256, 1, 1)
-    grid = dim3(ceiling(real(N)/tBlock%x), 1, 1)
+    tBlock = dim3(512, 1, 1)
+    grid = dim3(ceiling(real(n) / tBlock%x), 1, 1)
 
     ! Inicializamos los arreglos
     allocate( x(n), y(n), x_d(n), y_d(n) )

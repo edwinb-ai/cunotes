@@ -1,0 +1,32 @@
+module kernels
+    use cudafor
+    implicit none
+    public saxpy, add_dev
+contains
+    attributes(global) subroutine saxpy(x, y, a)
+    ! Variables de entrada
+    real, intent(in), device :: x(:)
+    real, intent(inout), device :: y(:)
+    real, intent(in), value :: a
+    ! Variables locales
+    integer :: i, n
+
+    n = size(x)
+    i = blockDim%x * (blockIdx%x - 1) + threadIdx%x
+    if (i <= n) y(i) = y(i) + a*x(i)
+
+    end subroutine saxpy
+
+    attributes(global) subroutine add_dev(a,b,c)
+    ! Este kernel suma dos vectores a y b, y regresa el resultado
+    ! en el arreglo c
+        integer, intent(in), device :: a(:), b(:)
+        integer, intent(inout), device :: c(:)
+        integer :: tid, n
+
+        n = size(a)
+        tid = blockIdx%x
+
+        if ( tid <= n ) c(tid) = a(tid) + b(tid)
+    end subroutine add_dev
+end module kernels
