@@ -1,0 +1,126 @@
+program euclidean
+    use iso_fortran_env, only: output_unit, dp => real64
+    use cudafor
+    use curand
+    implicit none
+    
+    ! Variables locales
+    real, allocatable, device :: pos_ad(:),pos_bd(:) ! En GPU
+    real, allocatable :: pos_a(:), pos_b(:), temp(:)  ! En CPU
+    real(kind=dp) :: dist, vdist ! Necesitamos doble precisión !!!
+    real :: start, finish
+    real :: asq, bsq, ab
+    integer :: n, seed, istat, i, j
+    integer :: inside_cpu
+    type(curandGenerator) :: gen
+    ! Para medir rendimiento en GPU
+    type(cudaEvent) :: startEvent, stopEvent
+    real :: time
+
+    ! Número de elementos en el arreglo
+    n = 2 ** 28
+    ! Asignar memoria para los arreglos
+    allocate( pos_a(n), pos_b(n), temp(n) )
+    allocate( pos_ad(n), pos_bd(n) )
+
+    ! Crear el RNG, istat debe ser 0
+    istat = curandCreateGenerator( gen, CURAND_RNG_PSEUDO_DEFAULT )
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
+
+    ! Asignarle una semilla al RNG
+    seed = 902343416
+    istat = curandSetPseudoRandomGeneratorSeed( gen,seed )
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
+
+    ! Crear `n` números aleatorios uniformes, en GPU
+    istat = curandGenerateUniform( gen,pos_ad,n )
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
+    istat = curandGenerateUniform( gen,pos_bd,n )
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
+
+    ! En CPU tenemos que hacer un ciclo
+    pos_a = pos_ad
+    pos_b = pos_bd
+    ! pos_ad = pos_a
+    ! pos_bd = pos_b
+    dist = 0.0
+    call cpu_time(start)
+    do i = 1,n
+        vdist = pos_a(i) - pos_b(i)
+        dist = dist + (vdist ** 2)
+    end do
+
+    dist = sqrt(dist)
+    call cpu_time(finish)
+    write(unit=output_unit, fmt="(a,8f)") "CPU, ciclo:", dist
+    write(unit=output_unit, fmt="(a,8f)") "Tiempo de finalización:", finish-start
+
+    ! O usar la vectorización de Fortran
+    dist = 0.0
+    start = 0.0
+    finish = 0.0
+    call cpu_time(start)
+    temp = pos_a - pos_b
+    dist = norm2(temp)
+    call cpu_time(finish)
+    write(unit=output_unit, fmt="(a,8f)") "CPU, vectorizado:", dist
+    write(unit=output_unit, fmt="(a,8f)") "Tiempo de finalización:", finish-start
+
+    dist = 0.0
+
+    istat = cudaEventCreate(startEvent)
+    istat = cudaEventCreate(stopEvent)
+
+    istat = cudaEventRecord(startEvent, 0)
+    
+    !$cuf kernel do <<< *, * >>>
+    do i = 1,n
+        vdist = pos_ad(i) - pos_bd(i)
+        dist = dist + (vdist ** 2)
+    end do
+    
+    istat = cudaEventRecord(stopEvent, 0)
+    istat = cudaEventSynchronize(stopEvent)
+    istat = cudaEventElapsedTime(time, startEvent, stopEvent)
+    dist = sqrt(dist)
+    write(unit=output_unit, fmt="(a,8f)") "GPU, ciclo:", dist
+    time = time / 1000.0
+    write(unit=output_unit, fmt="(a,8f)") "Tiempo de finalización:", time
+
+    dist = 0.0
+    asq = 0.0
+    bsq = 0.0
+    ab = 0.0
+    time = 0.0
+
+    istat = cudaEventRecord(startEvent, 0)
+    
+    !$cuf kernel do <<< *, * >>>
+    do i = 1,n
+        asq = asq + pos_ad(i) ** 2
+    end do
+
+    !$cuf kernel do <<< *, * >>>
+    do i = 1,n
+        bsq = bsq + pos_bd(i) ** 2
+    end do
+
+    !$cuf kernel do <<< *, * >>>
+    do i = 1,n
+        ab = ab + pos_ad(i) * pos_bd(i)
+    end do
+
+    dist = asq + bsq - (2.0 * ab)
+    
+    istat = cudaEventRecord(stopEvent, 0)
+    istat = cudaEventSynchronize(stopEvent)
+    istat = cudaEventElapsedTime(time, startEvent, stopEvent)
+    dist = sqrt(dist)
+    write(unit=output_unit, fmt="(a,8f)") "GPU, descomposicion:", dist
+    time = time / 1000.0
+    write(unit=output_unit, fmt="(a,8f)") "Tiempo de finalización:", time
+
+    deallocate( pos_ad, pos_bd, pos_a, pos_b, temp )
+    istat = cudaEventDestroy(startEvent)
+    istat = cudaEventDestroy(stopEvent)
+end program euclidean

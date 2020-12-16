@@ -18,7 +18,7 @@ fijo de **hilos**.
 
 La sintáxis para usar _kernels_ es
 
-```fortran
+```Fortran
 call nombre_kernel<<<numero_bloques, hilos_por_bloque>>>(argumentos, ...)
 ```
 

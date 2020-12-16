@@ -5,7 +5,7 @@ escribe en un _kernel_.
 
 En la instrucción
 
-```fortran
+```Fortran
 call add_dv<<<N,1>>>( dev_a, dev_b, dev_c )
 ```
 
@@ -28,7 +28,7 @@ replicar el código del _kernel_ para cada bloque.
 
 De esta forma, se tiene el siguiente código
 
-```fortran
+```Fortran
 if ( tid <= n ) c(tid) = a(tid) + b(tid)
 ```
 

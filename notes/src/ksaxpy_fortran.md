@@ -40,8 +40,8 @@ operaciones con arreglos mucho más grandes.
 
 Es importante notar que para escoger el índice del hilo se usa el siguiente código
 
-```fortran
+```Fortran
 i = blockDim%x * (blockIdx%x - 1) + threadIdx%x
 ```
 
-debido a que los arreglos en FORTRAN comienzan en uno, a diferencia de cero, como en `C/C++`.
+debido a que los arreglos en Fortran comienzan en uno, a diferencia de cero, como en `C/C++`.

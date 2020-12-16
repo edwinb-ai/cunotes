@@ -10,7 +10,7 @@ que sea el caso:
 
 - `Julia`, usando [`CUDA.jl`](https://juliagpu.gitlab.io/CUDA.jl/).
 - `C/C++`, usando la API nativa.
-- `Fortran`, usando [CUDA FORTRAN](https://developer.nvidia.com/cuda-fortran).
+- `Fortran`, usando [CUDA Fortran](https://developer.nvidia.com/cuda-Fortran).
 
 Las implementaciones deben de ser equivalentes entre ellas.
 

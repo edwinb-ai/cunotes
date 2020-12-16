@@ -1,43 +1,51 @@
 program curand_example
     use cudafor
     use curand
+    use iso_fortran_env, only: output_unit, dp => real64
+    
     implicit none
-    real, allocatable :: hostData(:)
-    real, allocatable, device :: deviceData(:)
-    real :: pival
-    integer :: N, seed, istat, inside_gpu, i, twoN
+
+    ! Variables locales
+    real, allocatable :: x_h(:), y_h(:)
+    real, allocatable, device :: x_d(:), y_d(:)
+    real(dp) :: pival, temp ! Doble precisión !!!
+    integer :: N, seed, istat, inside_gpu, i
     integer :: inside_cpu
     type(curandGenerator) :: gen
 
     ! Número de elementos en el arreglo
     N = 10000000
-    twoN = N*N
 
     ! Generar la memoria para los arreglos
-    allocate( hostData(twoN) )
-    allocate( deviceData(twoN) )
+    allocate( x_h(N), y_h(N) )
+    allocate( x_d(N), y_d(N) )
 
     ! Crear el RNG, istat debe ser 0
     istat = curandCreateGenerator( gen, CURAND_RNG_PSEUDO_DEFAULT )
-    print*, istat
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
 
     ! Asignarle una semilla al RNG
-    seed = 312343416
+    seed = 312343413
     istat = curandSetPseudoRandomGeneratorSeed( gen,seed )
-    print*, istat
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
 
     ! Crear N*N números aleatorios uniformes, en GPU
-    istat = curandGenerateUniform( gen,deviceData,twoN )
-    print*, istat
+    istat = curandGenerateUniform( gen,x_d,N )
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
+    istat = curandGenerateUniform( gen,y_d,N )
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
 
     ! Copiar implícitamente datos de GPU a CPU
-    hostData = deviceData
+    x_h = x_d
+    y_h = y_d
 
     ! Aquí se emplea un CUF kernel (automático)
     inside_gpu = 0
-    !$cuf kernel do <<<*,*>>>
+
+    !$cuf kernel do <<< *,* >>>
     do i = 1,N
-        if ( (deviceData(i)**2 + deviceData(i+N)**2) <= 1.0 ) then
+        temp = x_d(i)**2 + y_d(i)**2
+        if ( temp <= 1.0_dp ) then
             inside_gpu = inside_gpu + 1
         end if
     end do
@@ -45,24 +53,24 @@ program curand_example
     ! Se compara el mismo resultado en el CPU
     inside_cpu = 0
     do i = 1,N
-        if ( (hostData(i)**2 + hostData(i+N)**2) <= 1.0 ) then
+        temp = x_h(i)**2 + y_h(i)**2
+        if ( temp <= 1.0 ) then
             inside_cpu = inside_cpu + 1
         end if
     end do
 
     if (inside_cpu .ne. inside_gpu) then
-        write(*,*) "Mismatch between CPU/GPU"
+        write(unit=output_unit, fmt='(a)') "Mismatch between CPU/GPU"
     end if
 
     ! Finalmente, se comprueba el resultado obtenido
-    pival = 4.0*real(inside_gpu)/real(N)
-    write(*,"(t3,a,i10,a,f10.8,a,e11.4)") "Samples=", N, &
+    pival = 4.0_dp*real(inside_gpu)/real(N)
+    write(unit=output_unit,"(t3,a,i10,a,f10.8,a,e11.4)") "Samples=", N, &
     "  Pi=", pival, &
-    "  Error=", abs(pival -2.0*asin(1.0))
+    "  Error=", abs(pival - 2.0_dp*dasin(1.0_dp))
 
     ! Se limpia la memoria
-    deallocate( hostData )
-    deallocate( deviceData )
+    deallocate( x_h,x_d,y_h,y_d )
     istat = curandDestroyGenerator( gen )
-    print*, istat
+    write(unit=output_unit, fmt='(a)') cudaGetErrorString(istat)
 end program curand_example
