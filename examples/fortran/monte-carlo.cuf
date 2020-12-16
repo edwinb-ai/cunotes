@@ -64,7 +64,7 @@ program curand_example
     end if
 
     ! Finalmente, se comprueba el resultado obtenido
-    pival = 4.0_dp*real(inside_gpu)/real(N)
+    pival = 4.0_dp * real(inside_gpu) / real(N)
     write(unit=output_unit,"(t3,a,i10,a,f10.8,a,e11.4)") "Samples=", N, &
     "  Pi=", pival, &
     "  Error=", abs(pival - 2.0_dp*dasin(1.0_dp))
